@@ -1,3 +1,5 @@
+print("Bot starting...")
+
 import discord
 from discord.ext import commands
 import datetime
@@ -151,13 +153,11 @@ class LoginView(discord.ui.View):
         custom_id="persistent_login_button"
     )
     async def login_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(LoginModal())
         role = interaction.guild.get_role(ROLE_ID)
 
-        # Block users with role
         if role in interaction.user.roles:
             await interaction.response.send_message(
-                "You al have access.",
+                "You already have access.",
                 ephemeral=True
             )
             return
@@ -195,7 +195,7 @@ async def generatekey(ctx, amount: int):
         key = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(12))
 
         cursor.execute(
-            "INSERT INTO keys (key, generator_id, used) VALUES (?, ?, 0)",
+            "INSERT INTO keys (key, created_by, used) VALUES (?, ?, 0)",
             (key, ctx.author.id)
         )
         conn.commit()
