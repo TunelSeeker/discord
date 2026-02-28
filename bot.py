@@ -4,6 +4,8 @@ import datetime
 import random
 import string
 import sqlite3
+import secrets
+import string
 
 # Create / connect database
 conn = sqlite3.connect("keys.db")
@@ -28,6 +30,7 @@ ROLE_ID = 1477159527366393987
 INVITE_CHANNEL_ID = 1477161537159299092
 LOGIN_CHANNEL_ID = 1477161753753292964
 LOG_CHANNEL_ID = 1477167972421337302
+GENERATOR_ROLE_ID = 1477407727021068500
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -41,6 +44,9 @@ invite_cooldowns = {}
 def generate_key():
     random_part = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
     return f"5566-{random_part}"
+
+def has_generator_role(member: discord.Member):
+    return any(role.id == GENERATOR_ROLE_ID for role in member.roles)
 
 
 async def ensure_panel(channel_id, embed, view):
@@ -170,6 +176,36 @@ async def loginsystem(ctx):
     )
 
     await ctx.send(embed=embed, view=LoginView())
+
+# ================= GENERATOR KEY =================
+
+@bot.command()
+async def generatekey(ctx, amount: int):
+    # Role restriction
+    if not has_generator_role(ctx.author):
+        return
+
+    # Basic validation
+    if amount <= 0 or amount > 50:
+        return
+
+    keys = []
+
+    for _ in range(amount):
+        key = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(12))
+
+        cursor.execute(
+            "INSERT INTO keys (key, generator_id, used) VALUES (?, ?, 0)",
+            (key, ctx.author.id)
+        )
+        conn.commit()
+
+        keys.append(key)
+
+    try:
+        await ctx.author.send("\n".join(keys))
+    except discord.Forbidden:
+        pass
 
 # ================= INVITE SYSTEM =================
 
