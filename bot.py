@@ -25,6 +25,8 @@ TOKEN = os.getenv("TOKEN") #using this because of hosting
 #TOKEN = "tone is here"
 OWNER_ID = 1313838404844130307
 ROLE_ID = 1477159527366393987
+INVITE_CHANNEL_ID = 1477161537159299092
+LOGIN_CHANNEL_ID = 1477161753753292964
 LOG_CHANNEL_ID = 1477167972421337302
 
 intents = discord.Intents.default()
@@ -39,6 +41,19 @@ invite_cooldowns = {}
 def generate_key():
     random_part = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
     return f"5566-{random_part}"
+
+
+async def ensure_panel(channel_id, embed, view):
+    channel = bot.get_channel(channel_id)
+    if channel is None:
+        return
+
+    async for message in channel.history(limit=20):
+        if message.author == bot.user and message.components:
+            return  # Panel already exists
+
+    await channel.send(embed=embed, view=view)
+
 
 # ================= LOGIN SYSTEM =================
 
@@ -69,7 +84,7 @@ class LoginModal(discord.ui.Modal, title="Enter Key"):
 
         if role in interaction.user.roles:
             await interaction.response.send_message(
-                "You already have access.",
+                "You al have access.",
                 ephemeral=True
             )
             return
@@ -88,7 +103,7 @@ class LoginModal(discord.ui.Modal, title="Enter Key"):
 
         if result[0] == 1:
             await interaction.response.send_message(
-                "❌ This key has already been used.",
+                "❌ This key has al been used.",
                 ephemeral=True
             )
             return
@@ -121,14 +136,22 @@ class LoginModal(discord.ui.Modal, title="Enter Key"):
         )
 
 class LoginView(discord.ui.View):
-    @discord.ui.button(label="Login", style=discord.ButtonStyle.primary)
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(
+        label="Login",
+        style=discord.ButtonStyle.primary,
+        custom_id="persistent_login_button"
+    )
     async def login_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(LoginModal())
         role = interaction.guild.get_role(ROLE_ID)
 
         # Block users with role
         if role in interaction.user.roles:
             await interaction.response.send_message(
-                "You already have access.",
+                "You al have access.",
                 ephemeral=True
             )
             return
@@ -151,7 +174,14 @@ async def loginsystem(ctx):
 # ================= INVITE SYSTEM =================
 
 class InviteView(discord.ui.View):
-    @discord.ui.button(label="Generate", style=discord.ButtonStyle.success)
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(
+        label="Generate",
+        style=discord.ButtonStyle.success,
+        custom_id="persistent_invite_generate"
+    )
     async def generate_button(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         role = interaction.guild.get_role(ROLE_ID)
@@ -242,6 +272,24 @@ async def addmember(ctx, member: discord.Member):
 
 @bot.event
 async def on_ready():
+    bot.add_view(InviteView())
+    bot.add_view(LoginView())
+
+    invite_embed = discord.Embed(
+        title="Invite System",
+        description="Press the button to generate an invite key (1 key every 3 days)",
+        color=discord.Color.green()
+    )
+
+    login_embed = discord.Embed(
+        title="Login System",
+        description="Press the button to paste the key inside.",
+        color=discord.Color.blue()
+    )
+
+    await ensure_panel(INVITE_CHANNEL_ID, invite_embed, InviteView())
+    await ensure_panel(LOGIN_CHANNEL_ID, login_embed, LoginView())
+
     print(f"Logged in as {bot.user}")
 
 bot.run(TOKEN)
